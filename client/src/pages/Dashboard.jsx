@@ -1,189 +1,234 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  Card,
-  CardContent,
-  Avatar
-} from '@mui/material';
-import {
-  School,
-  Groups,
-  Person,
-  Class
-} from '@mui/icons-material';
+import { Link } from 'react-router-dom';
+import { studentAPI, departmentAPI } from '../services/api';
+import { 
+  Users, 
+  GraduationCap, 
+  TrendingUp, 
+  Award,
+  ChevronRight,
+  Loader2,
+  BookOpen
+} from 'lucide-react';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalStudents: 0
-  });
+  const [stats, setStats] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [topPerformers, setTopPerformers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
+    loadDashboardData();
   }, []);
 
-  const fetchStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      const response = await axios.get('/api/students');
-      setStats({
-        totalStudents: response.data.length
-      });
+      const [statsRes, deptsRes, topRes] = await Promise.all([
+        studentAPI.getDashboardStats(),
+        departmentAPI.getAll(),
+        studentAPI.getTopPerformers({ limit: 5 })
+      ]);
+
+      setStats(statsRes.data);
+      setDepartments(deptsRes.data);
+      setTopPerformers(topRes.data);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
 
   const statCards = [
     {
       title: 'Total Students',
-      value: stats.totalStudents,
-      icon: <Groups />,
-      color: '#667eea',
-      bgColor: '#e8eaf6'
+      value: stats?.totalStudents || 0,
+      icon: Users,
+      color: 'from-blue-500 to-blue-600',
+      bgColor: 'bg-blue-50',
+      textColor: 'text-blue-600'
     },
     {
-      title: 'Department',
-      value: user?.department,
-      icon: <School />,
-      color: '#26c6da',
-      bgColor: '#e0f7fa'
+      title: 'Departments',
+      value: departments.length,
+      icon: BookOpen,
+      color: 'from-purple-500 to-purple-600',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-600'
     },
     {
-      title: 'Year',
-      value: `Year ${user?.year}`,
-      icon: <Class />,
-      color: '#ab47bc',
-      bgColor: '#f3e5f5'
+      title: 'Average CGPA',
+      value: stats?.avgCGPA?.toFixed(2) || '0.00',
+      icon: TrendingUp,
+      color: 'from-emerald-500 to-emerald-600',
+      bgColor: 'bg-emerald-50',
+      textColor: 'text-emerald-600'
     },
     {
-      title: 'Role',
-      value: 'Mentor',
-      icon: <Person />,
-      color: '#66bb6a',
-      bgColor: '#e8f5e9'
+      title: 'Placed Students',
+      value: stats?.placedStudents || 0,
+      icon: Award,
+      color: 'from-amber-500 to-amber-600',
+      bgColor: 'bg-amber-50',
+      textColor: 'text-amber-600'
     }
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
-        Dashboard Overview
-      </Typography>
+    <div className="min-h-screen p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="animate-slide-down">
+          <h1 className="text-4xl font-display font-bold text-dark-900 mb-2">
+            Dashboard Overview
+          </h1>
+          <p className="text-dark-600">
+            Welcome back! Here's what's happening with your departments
+          </p>
+        </div>
 
-      <Grid container spacing={3}>
-        {statCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card
-              elevation={3}
-              sx={{
-                height: '100%',
-                transition: 'transform 0.3s, box-shadow 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: 6
-                }
-              }}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+          {statCards.map((stat, index) => (
+            <div
+              key={index}
+              className="stat-card group hover:scale-105 transform transition-all duration-300"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Avatar
-                    sx={{
-                      bgcolor: card.bgColor,
-                      color: card.color,
-                      width: 56,
-                      height: 56,
-                      mr: 2
-                    }}
-                  >
-                    {card.icon}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h4" fontWeight="bold" color={card.color}>
-                      {card.value}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {card.title}
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-dark-600 mb-1">
+                    {stat.title}
+                  </p>
+                  <p className="text-3xl font-display font-bold text-dark-900">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
+                  <stat.icon className={`w-6 h-6 ${stat.textColor}`} />
+                </div>
+              </div>
+              <div className={`h-2 bg-gradient-to-r ${stat.color} rounded-full mt-4`}></div>
+            </div>
+          ))}
+        </div>
 
-      <Paper
-        elevation={3}
-        sx={{
-          p: 4,
-          mt: 4,
-          borderRadius: 2,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white'
-        }}
-      >
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Welcome, {user?.name}!
-        </Typography>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          You are managing students from <strong>{user?.department}</strong> department, <strong>Year {user?.year}</strong>.
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 2, opacity: 0.9 }}>
-          Use the sidebar to navigate through different sections and manage student records efficiently.
-        </Typography>
-      </Paper>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Departments */}
+          <div className="lg:col-span-2 card animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-display font-bold text-dark-900">
+                Departments
+              </h2>
+              <GraduationCap className="w-6 h-6 text-blue-600" />
+            </div>
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
-              Quick Actions
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • View all students in your department and year
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • Add new student records
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • Update existing student information
-              </Typography>
-              <Typography variant="body2">
-                • Delete student records when needed
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+            <div className="space-y-4">
+              {departments.map((dept, index) => (
+                <Link
+                  key={dept._id}
+                  to={`/department/${dept.code}`}
+                  className="block p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-md transition-all duration-300 group"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm px-3 py-1 rounded-lg">
+                          {dept.code}
+                        </div>
+                        <h3 className="font-semibold text-dark-900 group-hover:text-blue-600 transition-colors">
+                          {dept.name}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-dark-600">{dept.description}</p>
+                      <div className="flex items-center space-x-4 mt-3 text-sm">
+                        <span className="text-dark-500">
+                          <span className="font-medium text-dark-700">{dept.totalStudents}</span> Students
+                        </span>
+                        <span className="text-dark-500">HOD: {dept.hodName}</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-dark-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
 
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom color="secondary">
-              Important Information
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • All changes are saved automatically
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • You can only manage students from your assigned year
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                • Student data is secure and confidential
-              </Typography>
-              <Typography variant="body2">
-                • Contact admin for any technical issues
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+          {/* Top Performers */}
+          <div className="card animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-display font-bold text-dark-900">
+                Top Performers
+              </h2>
+              <Award className="w-5 h-5 text-amber-500" />
+            </div>
+
+            <div className="space-y-3">
+              {topPerformers.map((student, index) => (
+                <Link
+                  key={student._id}
+                  to={`/student/${student._id}`}
+                  className="block p-3 rounded-lg bg-gradient-to-r from-slate-50 to-blue-50 hover:from-blue-50 hover:to-indigo-50 border border-slate-200 hover:border-blue-300 transition-all duration-300 group"
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      #{index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-dark-900 truncate group-hover:text-blue-600 transition-colors">
+                        {student.name}
+                      </p>
+                      <p className="text-xs text-dark-500">{student.registrationNumber}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-dark-600">{student.department?.name}</span>
+                        <span className="text-sm font-bold text-emerald-600">
+                          {student.cgpa.toFixed(2)} CGPA
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Year-wise Distribution */}
+        {stats?.yearWise && (
+          <div className="card animate-fade-in">
+            <h2 className="text-2xl font-display font-bold text-dark-900 mb-6">
+              Year-wise Student Distribution
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {stats.yearWise.map((year) => (
+                <div
+                  key={year._id}
+                  className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200"
+                >
+                  <p className="text-sm font-medium text-blue-800 mb-1">
+                    Year {year._id}
+                  </p>
+                  <p className="text-3xl font-display font-bold text-blue-900">
+                    {year.count}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">Students</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

@@ -1,48 +1,37 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-
+const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
+const Admin = require('../models/Admin');
+const auth = require('../middleware/auth');
 
 // Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Create token
     const token = jwt.sign(
-      { 
-        id: user._id, 
-        role: user.role,
-        department: user.department,
-        year: user.year
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { id: admin._id },
+      process.env.JWT_SECRET || 'your_jwt_secret_key_here_change_in_production',
+      { expiresIn: '7d' }
     );
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        year: user.year
+      admin: {
+        id: admin._id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role
       }
     });
   } catch (error) {
@@ -51,38 +40,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register (for initial setup - can be restricted later)
-router.post('/register', async (req, res) => {
+// Get current admin
+router.get('/me', auth, async (req, res) => {
   try {
-    const { name, email, password, role, department, year, rollNumber } = req.body;
-
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = new User({
-      name,
-      email,
-      password: hashedPassword,
-      role,
-      department,
-      year,
-      rollNumber: role === 'student' ? rollNumber : undefined
-    });
-
-    await user.save();
-
-    res.status(201).json({ message: 'User registered successfully' });
+    res.json({ admin: req.admin });
   } catch (error) {
-    console.error('Register error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-export default router;
+// Logout (client-side token removal, but endpoint for consistency)
+router.post('/logout', auth, async (req, res) => {
+  res.json({ message: 'Logged out successfully' });
+});
+
+module.exports = router;

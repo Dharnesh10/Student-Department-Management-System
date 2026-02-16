@@ -1,180 +1,232 @@
-import express from 'express';
-import bcrypt from 'bcryptjs';
-import User from '../models/User.js';
-import { authenticateMentor } from '../middleware/middleware.js';
-
+const express = require('express');
 const router = express.Router();
+const Student = require('../models/Student');
+const Department = require('../models/Department');
+const auth = require('../middleware/auth');
 
-// Get all students (mentor can only see their dept and year)
-router.get('/', authenticateMentor, async (req, res) => {
+// Get all students with filters and search
+router.get('/', auth, async (req, res) => {
   try {
-    const { department, year } = req.user;
+    const { 
+      year, 
+      department, 
+      search, 
+      sortBy = 'registrationNumber', 
+      order = 'asc',
+      page = 1,
+      limit = 50
+    } = req.query;
 
-    const students = await User.find({
-      role: 'student',
-      department: department,
-      year: year
-    }).select('-password');
+    const query = {};
+    
+    if (year) query.currentYear = parseInt(year);
+    if (department) query.departmentCode = department;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { registrationNumber: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
 
-    res.json(students);
+    const sortOrder = order === 'desc' ? -1 : 1;
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder;
+
+    const students = await Student.find(query)
+      .populate('department', 'name code')
+      .sort(sortOptions)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Student.countDocuments(query);
+
+    res.json({
+      students,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
   } catch (error) {
-    console.error('Get students error:', error);
+    console.error('Error fetching students:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get single student
-router.get('/:id', authenticateMentor, async (req, res) => {
+// Get single student by ID
+router.get('/:id', auth, async (req, res) => {
   try {
-    const { department, year } = req.user;
-    const student = await User.findOne({
-      _id: req.params.id,
-      role: 'student',
-      department: department,
-      year: year
-    }).select('-password');
-
+    const student = await Student.findById(req.params.id)
+      .populate('department', 'name code designation');
+    
     if (!student) {
-      return res.status(404).json({ message: 'Student not found or access denied' });
+      return res.status(404).json({ message: 'Student not found' });
     }
 
     res.json(student);
   } catch (error) {
-    console.error('Get student error:', error);
+    console.error('Error fetching student:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Add new student
-router.post('/', authenticateMentor, async (req, res) => {
+// Get student by registration number
+router.get('/regno/:regNo', auth, async (req, res) => {
   try {
-    const { department, year } = req.user;
-    const {
-      name,
-      email,
-      password,
-      rollNumber,
-      phoneNumber,
-      address,
-      dateOfBirth,
-      gender,
-      parentName,
-      parentContact
-    } = req.body;
-
-    // Check if student already exists
-    const existingStudent = await User.findOne({ 
-      $or: [{ email }, { rollNumber }] 
-    });
+    const student = await Student.findOne({ 
+      registrationNumber: req.params.regNo.toUpperCase() 
+    }).populate('department', 'name code designation');
     
-    if (existingStudent) {
-      return res.status(400).json({ 
-        message: 'Student with this email or roll number already exists' 
-      });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create student (must be in mentor's dept and year)
-    const student = new User({
-      name,
-      email,
-      password: hashedPassword,
-      role: 'student',
-      department,
-      year,
-      rollNumber,
-      phoneNumber,
-      address,
-      dateOfBirth,
-      gender,
-      parentName,
-      parentContact
-    });
-
-    await student.save();
-
-    const studentResponse = student.toObject();
-    delete studentResponse.password;
-
-    res.status(201).json(studentResponse);
+    res.json(student);
   } catch (error) {
-    console.error('Add student error:', error);
+    console.error('Error fetching student:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get students by department and year
+router.get('/filter/:departmentCode/:year', auth, async (req, res) => {
+  try {
+    const { departmentCode, year } = req.params;
+    const students = await Student.find({
+      departmentCode: departmentCode.toUpperCase(),
+      currentYear: parseInt(year)
+    })
+    .populate('department', 'name code')
+    .sort({ registrationNumber: 1 });
+
+    res.json(students);
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get top performers
+router.get('/analytics/top-performers', auth, async (req, res) => {
+  try {
+    const { department, year, limit = 10 } = req.query;
+    const query = { cgpa: { $gt: 0 } };
+    
+    if (department) query.departmentCode = department;
+    if (year) query.currentYear = parseInt(year);
+
+    const toppers = await Student.find(query)
+      .populate('department', 'name code')
+      .sort({ cgpa: -1 })
+      .limit(parseInt(limit));
+
+    res.json(toppers);
+  } catch (error) {
+    console.error('Error fetching top performers:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get placement statistics
+router.get('/analytics/placements', auth, async (req, res) => {
+  try {
+    const { department } = req.query;
+    const query = { currentYear: 4 };
+    
+    if (department) query.departmentCode = department;
+
+    const placements = await Student.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$placementStatus',
+          count: { $sum: 1 },
+          avgPackage: { $avg: '$package' }
+        }
+      }
+    ]);
+
+    const topPlacements = await Student.find({
+      ...query,
+      placementStatus: 'Placed',
+      package: { $exists: true }
+    })
+    .populate('department', 'name code')
+    .sort({ package: -1 })
+    .limit(10);
+
+    res.json({
+      statistics: placements,
+      topPlacements
+    });
+  } catch (error) {
+    console.error('Error fetching placement stats:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Update student
-router.put('/:id', authenticateMentor, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
-    const { department, year } = req.user;
-    const {
-      name,
-      email,
-      phoneNumber,
-      address,
-      dateOfBirth,
-      gender,
-      parentName,
-      parentContact
-    } = req.body;
-
-    // Find student and verify access
-    const student = await User.findOne({
-      _id: req.params.id,
-      role: 'student',
-      department: department,
-      year: year
-    });
+    const student = await Student.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    ).populate('department', 'name code');
 
     if (!student) {
-      return res.status(404).json({ message: 'Student not found or access denied' });
+      return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Update fields
-    student.name = name || student.name;
-    student.email = email || student.email;
-    student.phoneNumber = phoneNumber || student.phoneNumber;
-    student.address = address || student.address;
-    student.dateOfBirth = dateOfBirth || student.dateOfBirth;
-    student.gender = gender || student.gender;
-    student.parentName = parentName || student.parentName;
-    student.parentContact = parentContact || student.parentContact;
-
-    await student.save();
-
-    const studentResponse = student.toObject();
-    delete studentResponse.password;
-
-    res.json(studentResponse);
+    res.json(student);
   } catch (error) {
-    console.error('Update student error:', error);
+    console.error('Error updating student:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Delete student
-router.delete('/:id', authenticateMentor, async (req, res) => {
+// Dashboard statistics
+router.get('/analytics/dashboard', auth, async (req, res) => {
   try {
-    const { department, year } = req.user;
+    const totalStudents = await Student.countDocuments();
+    
+    const yearWise = await Student.aggregate([
+      { $group: { _id: '$currentYear', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
 
-    const student = await User.findOneAndDelete({
-      _id: req.params.id,
-      role: 'student',
-      department: department,
-      year: year
+    const deptWise = await Student.aggregate([
+      { 
+        $group: { 
+          _id: '$departmentCode', 
+          count: { $sum: 1 },
+          avgCGPA: { $avg: '$cgpa' }
+        } 
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const avgCGPA = await Student.aggregate([
+      { $group: { _id: null, avgCGPA: { $avg: '$cgpa' } } }
+    ]);
+
+    const placedStudents = await Student.countDocuments({ 
+      placementStatus: 'Placed' 
     });
 
-    if (!student) {
-      return res.status(404).json({ message: 'Student not found or access denied' });
-    }
-
-    res.json({ message: 'Student deleted successfully' });
+    res.json({
+      totalStudents,
+      yearWise,
+      deptWise,
+      avgCGPA: avgCGPA[0]?.avgCGPA || 0,
+      placedStudents
+    });
   } catch (error) {
-    console.error('Delete student error:', error);
+    console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-export default router;
+module.exports = router;

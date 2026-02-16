@@ -1,80 +1,80 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { AuthProvider } from './context/AuthContext';
-import PrivateRoute from './components/PrivateRoute';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Navbar from './components/Navbar';
 import Login from './pages/Login';
-import DashboardLayout from './pages/DashboardLayout';
 import Dashboard from './pages/Dashboard';
-import Students from './pages/Students';
-import AddStudent from './pages/AddStudent';
-import MentorAcademics from './pages/MentorAcademics';
-import StudentDashboardLayout from './pages/StudentDashboardLayout';
-import StudentDashboard from './pages/StudentDashboard';
-import StudentAcademics from './pages/StudentAcademics';
-import StudentPerformance from './pages/StudentPerformance';
-import StudentProfile from './pages/StudentProfile';
+import DepartmentView from './pages/DepartmentView';
+import StudentDetail from './pages/StudentDetail';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#667eea',
-    },
-    secondary: {
-      main: '#764ba2',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
+const PrivateRoute = ({ children }) => {
+  const { admin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return admin ? children : <Navigate to="/login" />;
+};
+
+const AppRoutes = () => {
+  const { admin } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={admin ? <Navigate to="/" /> : <Login />}
+      />
+      <Route
+        path="/"
+        element={
+          <PrivateRoute>
+            <>
+              <Navbar />
+              <Dashboard />
+            </>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/department/:code"
+        element={
+          <PrivateRoute>
+            <>
+              <Navbar />
+              <DepartmentView />
+            </>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/student/:id"
+        element={
+          <PrivateRoute>
+            <>
+              <Navbar />
+              <StudentDetail />
+            </>
+          </PrivateRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <BrowserRouter>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            {/* Mentor Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute allowedRoles={['mentor']}>
-                  <DashboardLayout />
-                </PrivateRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="students" element={<Students />} />
-              <Route path="add-student" element={<AddStudent />} />
-              <Route path="academics" element={<MentorAcademics />} />
-            </Route>
-
-            {/* Student Routes */}
-            <Route
-              path="/student-dashboard"
-              element={
-                <PrivateRoute allowedRoles={['student']}>
-                  <StudentDashboardLayout />
-                </PrivateRoute>
-              }
-            >
-              <Route index element={<StudentDashboard />} />
-              <Route path="academics" element={<StudentAcademics />} />
-              <Route path="performance" element={<StudentPerformance />} />
-              <Route path="profile" element={<StudentProfile />} />
-            </Route>
-
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Router>
+        <AppRoutes />
       </AuthProvider>
-    </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

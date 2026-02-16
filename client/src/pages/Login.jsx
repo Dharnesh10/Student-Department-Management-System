@@ -1,28 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  Container,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Alert,
-  InputAdornment,
-  IconButton
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  School,
-  Login as LoginIcon
-} from '@mui/icons-material';
+import { Lock, Mail, Loader2, GraduationCap } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -36,12 +19,7 @@ const Login = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      // Redirect based on role
-      if (result.role === 'mentor') {
-        navigate('/dashboard');
-      } else if (result.role === 'student') {
-        navigate('/student-dashboard');
-      }
+      navigate('/');
     } else {
       setError(result.message);
     }
@@ -50,112 +28,106 @@ const Login = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: 2
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={10}
-          sx={{
-            padding: 4,
-            borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <School sx={{ fontSize: 60, color: '#667eea', mb: 2 }} />
-            <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-              Student Management System
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Login to access your dashboard
-            </Typography>
-          </Box>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Logo and Title */}
+        <div className="text-center mb-8 animate-slide-down">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-2xl mb-4">
+            <GraduationCap className="w-12 h-12 text-blue-600" />
+          </div>
+          <h1 className="text-4xl font-display font-bold text-white mb-2">
+            BIT Department
+          </h1>
+          <p className="text-blue-100 text-lg">Management System</p>
+        </div>
+
+        {/* Login Card */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 animate-scale-in">
+          <h2 className="text-2xl font-display font-bold text-dark-900 mb-2">
+            Admin Login
+          </h2>
+          <p className="text-dark-500 mb-6">
+            Sign in to access the dashboard
+          </p>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 animate-fade-in">
               {error}
-            </Alert>
+            </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="email"
-              autoFocus
-              sx={{ mb: 2 }}
-            />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field pl-11"
+                  placeholder="admin@bitsathy.ac.in"
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
 
-            <TextField
-              fullWidth
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="current-password"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-              sx={{ mb: 3 }}
-            />
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pl-11"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+            </div>
 
-            <Button
-              fullWidth
+            <button
               type="submit"
-              variant="contained"
-              size="large"
               disabled={loading}
-              startIcon={<LoginIcon />}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                textTransform: 'none',
-                borderRadius: 2,
-                background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #764ba2 30%, #667eea 90%)',
-                }
-              }}
+              className="w-full btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <span>Sign In</span>
+              )}
+            </button>
           </form>
 
-          <Box>Mentor: rajesh.cse1@college.edu / password123</Box>
-          <Box>Student: rahul.verma@student.edu / password123</Box>
+          {/* Demo credentials */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-900 font-medium mb-1">Demo Credentials:</p>
+            <p className="text-xs text-blue-700">Email: admin@bitsathy.ac.in</p>
+            <p className="text-xs text-blue-700">Password: admin123</p>
+          </div>
+        </div>
 
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              © 2024 Student Management System. All rights reserved.
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+        {/* Footer */}
+        <p className="text-center text-blue-100 text-sm mt-6">
+          © 2026 Bannari Amman Institute of Technology
+        </p>
+      </div>
+    </div>
   );
 };
 

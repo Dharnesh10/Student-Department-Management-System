@@ -1,56 +1,76 @@
-🎓 Student Department Management System (MERN Stack)
+# 🎓 Student Department Management System (MERN Stack)
 
-A full-stack Student Department Management System built using the MERN stack (MongoDB, Express.js, React.js, Node.js) with Material UI for a modern interface.
+A full-stack Student Department Management System built using the MERN stack (MongoDB, Express.js, React.js, Node.js) with Tailwind CSS for a modern interface.
 
-This system allows faculty mentors to manage student records department-wise and year-wise with secure role-based authentication.
+This system allows administrators to manage student records department-wise and year-wise with secure JWT-based authentication.
 
-🚀 Features
+## 🚀 Features
 
-🔐 Role-based login authentication (Mentor / Student)
+- 🔐 Secure admin login authentication
+- 🏫 Department-wise student management (CS, IT, CB, EE, ME)
+- 📊 CRUD operations on student records
+- 🎨 Modern UI using Tailwind CSS
+- ⚡ Fast frontend powered by Vite + React
+- 🗄 MongoDB database integration
+- 🌱 Database seeding script included
+- 📈 Student analytics and performance tracking
+- 🔍 Advanced search and filtering
 
-🏫 Department-wise student management
+## Installations and Setup:
 
-👨‍🏫 Mentor access restricted to assigned year
+### 1️⃣ Clone Repository
 
-📊 CRUD operations on student records
-
-🎨 Modern UI using Material UI (MUI)
-
-⚡ Fast frontend powered by Vite + React
-
-🗄 MongoDB database integration
-
-🌱 Database seeding script included
-
-Installations and setup:
-
-1️⃣ Clone Repository
-
+```bash
 git clone <repo-url>
-cd project-folder
+cd dept-management-system
+```
 
-2️⃣ Setup Backend and frontend
+### 2️⃣ Setup Backend and Frontend
 
-Create a new terminal(ctrl + shift + ~) and run:
+Create a new terminal (ctrl + shift + ~) and run:
+```bash
 cd frontend
 npm install
+```
 
-Add another new terminal(ctrl + shift + ~) and run:
-cd server
+Add another new terminal (ctrl + shift + ~) and run:
+```bash
+cd backend
 npm install
+```
 
-3️⃣Create .env file inside server/
+### 3️⃣ Create .env file inside backend/
 
+```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
+MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
+NODE_ENV=development
+```
 
-4️⃣Seed Database
+### 4️⃣ Seed Database
 
-Enter into your server folder: cd server
-run: node seed.js
+Enter into your backend folder:
+```bash
+cd backend
+node seeders/seed.js
+```
 
-5️⃣Run frontend and backend
+### 5️⃣ Run Frontend and Backend
 
-Ensure your path /client and run: npm run dev
-Ensure your path /server and run: npm start(nodemon recomended)
+Ensure your path is `/frontend` and run:
+```bash
+npm run dev
+```
+
+Ensure your path is `/backend` and run:
+```bash
+npm run dev
+```
+(nodemon recommended)
+
+---
+
+**Login Credentials:**
+- Email: `admin@bitsathy.ac.in`
+- Password: `admin123`
