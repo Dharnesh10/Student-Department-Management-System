@@ -55,6 +55,37 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Get all unique skills and certifications (helper endpoint for filter dropdowns)
+router.get('/filter-options', auth, async (req, res) => {
+  try {
+    const students = await Student.find({}, 'skills certifications');
+    
+    const uniqueSkills = new Set();
+    const uniqueCerts = new Set();
+    
+    students.forEach(student => {
+      if (student.skills && student.skills.length) {
+        student.skills.forEach(skill => {
+          if (skill.skillName) uniqueSkills.add(skill.skillName);
+        });
+      }
+      if (student.certifications && student.certifications.length) {
+        student.certifications.forEach(cert => {
+          if (cert.name) uniqueCerts.add(cert.name);
+        });
+      }
+    });
+
+    res.json({
+      skills: Array.from(uniqueSkills).sort(),
+      certifications: Array.from(uniqueCerts).sort()
+    });
+  } catch (error) {
+    console.error('Error fetching filter options:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get single student by ID
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -226,6 +257,136 @@ router.get('/analytics/dashboard', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add this new route after your existing routes
+// GET /api/students/filter/placements - Smart filter for placements
+
+// Filter students for placements (smart filter)
+router.get('/filter/placements', auth, async (req, res) => {
+  try {
+    const {
+      year,
+      minCGPA,
+      maxCGPA,
+      maxArrears,
+      skills,
+      certifications,
+      department,
+      placementStatus,
+      page = 1,
+      limit = 50,
+      sortBy = 'cgpa',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build the query object
+    let query = {};
+
+    // Year filter
+    if (year) {
+      query.currentYear = parseInt(year);
+    }
+
+    // Department filter (by department code)
+    if (department) {
+      query.departmentCode = department.toUpperCase();
+    }
+
+    // Placement status filter
+    if (placementStatus && placementStatus !== '') {
+      query.placementStatus = placementStatus;
+    }
+
+    // CGPA range filter
+    if (minCGPA || maxCGPA) {
+      query.cgpa = {};
+      if (minCGPA) query.cgpa.$gte = parseFloat(minCGPA);
+      if (maxCGPA) query.cgpa.$lte = parseFloat(maxCGPA);
+    }
+
+    // Arrears filter
+    if (maxArrears && maxArrears !== '') {
+      query.arrears = { $lte: parseInt(maxArrears) };
+    }
+
+    // Skills filter (search in skills array)
+    if (skills) {
+      const skillList = skills.split(',');
+      query['skills.skillName'] = { 
+        $in: skillList.map(skill => new RegExp(skill.trim(), 'i')) 
+      };
+    }
+
+    // Certifications filter (search in certifications array)
+    if (certifications) {
+      const certList = certifications.split(',');
+      query['certifications.name'] = { 
+        $in: certList.map(cert => new RegExp(cert.trim(), 'i')) 
+      };
+    }
+
+    // Search functionality (optional, can be added if needed)
+    const { search } = req.query;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { registrationNumber: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sorting options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination
+    const students = await Student.find(query)
+      .populate('department', 'name code designation')
+      .sort(sortOptions)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    // Get total count for pagination
+    const total = await Student.countDocuments(query);
+
+    // Get unique skills and certifications for filter suggestions
+    const allStudents = await Student.find({}, 'skills certifications');
+    
+    const uniqueSkills = new Set();
+    const uniqueCerts = new Set();
+    
+    allStudents.forEach(student => {
+      if (student.skills && student.skills.length) {
+        student.skills.forEach(skill => {
+          if (skill.skillName) uniqueSkills.add(skill.skillName);
+        });
+      }
+      if (student.certifications && student.certifications.length) {
+        student.certifications.forEach(cert => {
+          if (cert.name) uniqueCerts.add(cert.name);
+        });
+      }
+    });
+
+    res.json({
+      students,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        limit: parseInt(limit)
+      },
+      filterOptions: {
+        skills: Array.from(uniqueSkills).sort(),
+        certifications: Array.from(uniqueCerts).sort()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in smart filter:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

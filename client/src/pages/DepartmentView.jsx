@@ -8,15 +8,17 @@ import {
   ChevronLeft,
   Loader2,
   Search,
-  ArrowUpDown
+  ArrowUpDown,
+  ChevronDown
 } from 'lucide-react';
 
 const DepartmentView = () => {
   const { code } = useParams();
   const [department, setDepartment] = useState(null);
   const [stats, setStats] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(1);
+  const [selectedYear, setSelectedYear] = useState('all'); // Changed to 'all' by default
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]); // Store all students for "All Years" view
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('registrationNumber');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -26,9 +28,14 @@ const DepartmentView = () => {
     loadDepartmentData();
   }, [code]);
 
+  // Load students based on selected year
   useEffect(() => {
-    if (code && selectedYear) {
-      loadStudents();
+    if (code) {
+      if (selectedYear === 'all') {
+        loadAllStudents();
+      } else {
+        loadStudentsByYear(selectedYear);
+      }
     }
   }, [code, selectedYear, sortBy, sortOrder]);
 
@@ -47,16 +54,40 @@ const DepartmentView = () => {
     }
   };
 
-  const loadStudents = async () => {
+  const loadAllStudents = async () => {
     setLoading(true);
     try {
-      const response = await studentAPI.getByDeptAndYear(code, selectedYear);
+      // You might need to create a new API endpoint for this
+      // For now, let's fetch students for all years (1-4) and combine them
+      const promises = [1, 2, 3, 4].map(year => 
+        studentAPI.getByDeptAndYear(code, year)
+      );
+      
+      const responses = await Promise.all(promises);
+      const allStudentsData = responses.flatMap(response => response.data);
+      setAllStudents(allStudentsData);
+      setStudents(allStudentsData);
+    } catch (error) {
+      console.error('Error loading all students:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStudentsByYear = async (year) => {
+    setLoading(true);
+    try {
+      const response = await studentAPI.getByDeptAndYear(code, year);
       setStudents(response.data);
     } catch (error) {
       console.error('Error loading students:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleYearChange = (e) => {
+    setSelectedYear(e.target.value);
   };
 
   const handleSort = (field) => {
@@ -79,8 +110,8 @@ const DepartmentView = () => {
     let bVal = b[sortBy];
 
     if (sortBy === 'name' || sortBy === 'registrationNumber') {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
+      aVal = aVal?.toLowerCase();
+      bVal = bVal?.toLowerCase();
     }
 
     if (sortOrder === 'asc') {
@@ -97,6 +128,14 @@ const DepartmentView = () => {
       </div>
     );
   }
+
+  // Calculate year-wise counts for display
+  const yearCounts = {
+    1: allStudents.filter(s => s.currentYear === 1).length,
+    2: allStudents.filter(s => s.currentYear === 2).length,
+    3: allStudents.filter(s => s.currentYear === 3).length,
+    4: allStudents.filter(s => s.currentYear === 4).length
+  };
 
   return (
     <div className="min-h-screen p-6">
@@ -123,7 +162,7 @@ const DepartmentView = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in">
           <div className="stat-card">
             <div className="flex items-center justify-between">
               <div>
@@ -153,34 +192,50 @@ const DepartmentView = () => {
               <div>
                 <p className="text-sm text-dark-600 mb-1">HOD</p>
                 <p className="text-lg font-semibold text-dark-900">
-                  {department.hodName}
+                  {department.hodName || 'Not Assigned'}
                 </p>
               </div>
               <Award className="w-8 h-8 text-amber-600" />
             </div>
           </div>
+
+          <div className="stat-card bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-dark-600 mb-1">Year-wise Distribution</p>
+                <div className="flex space-x-3 text-sm">
+                  <span className="text-blue-600">Y1: {yearCounts[1]}</span>
+                  <span className="text-blue-600">Y2: {yearCounts[2]}</span>
+                  <span className="text-blue-600">Y3: {yearCounts[3]}</span>
+                  <span className="text-blue-600">Y4: {yearCounts[4]}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Year Tabs */}
+        {/* Year Dropdown and Student List */}
         <div className="card animate-slide-up">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-display font-bold text-dark-900">
-              Students by Year
+              Students
             </h2>
-            <div className="flex space-x-2">
-              {[1, 2, 3, 4].map((year) => (
-                <button
-                  key={year}
-                  onClick={() => setSelectedYear(year)}
-                  className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
-                    selectedYear === year
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                      : 'bg-slate-100 text-dark-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Year {year}
-                </button>
-              ))}
+            
+            {/* Year Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedYear}
+                onChange={handleYearChange}
+                className="appearance-none px-6 py-3 pr-12 rounded-lg font-medium transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:shadow-lg cursor-pointer outline-none"
+                style={{ minWidth: '140px' }}
+              >
+                <option value="all" className="bg-white text-dark-900">All Years</option>
+                <option value="1" className="bg-white text-dark-900">Year 1</option>
+                <option value="2" className="bg-white text-dark-900">Year 2</option>
+                <option value="3" className="bg-white text-dark-900">Year 3</option>
+                <option value="4" className="bg-white text-dark-900">Year 4</option>
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white pointer-events-none" />
             </div>
           </div>
 
@@ -200,21 +255,30 @@ const DepartmentView = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                className="px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white"
               >
                 <option value="registrationNumber">Registration Number</option>
                 <option value="name">Name</option>
                 <option value="cgpa">CGPA</option>
                 <option value="attendance">Attendance</option>
+                <option value="currentYear">Year</option>
               </select>
               <button
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-4 py-3 rounded-lg border-2 border-slate-200 hover:bg-slate-50"
+                className="px-4 py-3 rounded-lg border-2 border-slate-200 hover:bg-slate-50 transition-colors bg-white"
+                title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
               >
                 <ArrowUpDown className="w-5 h-5 text-dark-600" />
               </button>
             </div>
           </div>
+
+          {/* Year Summary (when showing all years) */}
+          {selectedYear === 'all' && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+              Showing students from all years. Use the dropdown above to filter by specific year.
+            </div>
+          )}
 
           {/* Students List */}
           {loading ? (
@@ -242,15 +306,21 @@ const DepartmentView = () => {
                         <span className="font-mono text-sm text-dark-600 bg-slate-100 px-3 py-1 rounded">
                           {student.registrationNumber}
                         </span>
+                        {/* Show year badge when viewing all years */}
+                        {selectedYear === 'all' && (
+                          <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+                            Year {student.currentYear}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center space-x-6 text-sm text-dark-600">
                         <span>{student.email}</span>
                         <span>Semester {student.currentSemester}</span>
                         <span className="font-medium text-emerald-600">
-                          CGPA: {student.cgpa.toFixed(2)}
+                          CGPA: {student.cgpa?.toFixed(2) || '0.00'}
                         </span>
                         <span className={`${student.attendance >= 75 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          Attendance: {student.attendance}%
+                          Attendance: {student.attendance || 0}%
                         </span>
                       </div>
                     </div>
@@ -270,6 +340,7 @@ const DepartmentView = () => {
 
           <div className="mt-6 text-sm text-dark-600 text-center">
             Showing {sortedStudents.length} of {students.length} students
+            {selectedYear !== 'all' && ` in Year ${selectedYear}`}
           </div>
         </div>
       </div>

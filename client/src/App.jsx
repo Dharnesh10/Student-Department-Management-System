@@ -1,11 +1,13 @@
+// App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
+import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DepartmentView from './pages/DepartmentView';
 import StudentDetail from './pages/StudentDetail';
+import SmartFilter from './pages/SmartFilter';
 
 const PrivateRoute = ({ children }) => {
   const { admin, loading } = useAuth();
@@ -34,10 +36,19 @@ const AppRoutes = () => {
         path="/"
         element={
           <PrivateRoute>
-            <>
-              <Navbar />
+            <Layout>
               <Dashboard />
-            </>
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/smart-filter"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <SmartFilter />
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -45,10 +56,9 @@ const AppRoutes = () => {
         path="/department/:code"
         element={
           <PrivateRoute>
-            <>
-              <Navbar />
+            <Layout>
               <DepartmentView />
-            </>
+            </Layout>
           </PrivateRoute>
         }
       />
@@ -56,10 +66,9 @@ const AppRoutes = () => {
         path="/student/:id"
         element={
           <PrivateRoute>
-            <>
-              <Navbar />
+            <Layout>
               <StudentDetail />
-            </>
+            </Layout>
           </PrivateRoute>
         }
       />

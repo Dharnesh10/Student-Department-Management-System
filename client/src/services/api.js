@@ -52,6 +52,8 @@ export const departmentAPI = {
 
 // Student API
 export const studentAPI = {
+  filterForPlacements: (params) => api.get('/students/filter/placements', { params }),
+  getFilterOptions: () => api.get('/students/filter-options'),
   getAll: (params) => api.get('/students', { params }),
   getById: (id) => api.get(`/students/${id}`),
   getByRegNo: (regNo) => api.get(`/students/regno/${regNo}`),

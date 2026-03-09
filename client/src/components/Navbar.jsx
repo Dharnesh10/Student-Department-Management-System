@@ -1,7 +1,14 @@
+// components/Navbar.jsx (updated)
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GraduationCap, LogOut, User, Home } from 'lucide-react';
+import { 
+  GraduationCap, 
+  LogOut, 
+  User, 
+  Home,
+  Filter 
+} from 'lucide-react';
 
 const Navbar = () => {
   const { admin, logout } = useAuth();
@@ -44,6 +51,19 @@ const Navbar = () => {
             >
               <Home className="w-4 h-4" />
               <span>Dashboard</span>
+            </Link>
+
+            {/* NEW: Smart Filter Link */}
+            <Link
+              to="/smart-filter"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                isActive('/smart-filter')
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'text-dark-600 hover:bg-slate-100'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>Smart Filter</span>
             </Link>
 
             {/* Admin Info */}
