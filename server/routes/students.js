@@ -55,6 +55,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+
+
 // Get all unique skills and certifications (helper endpoint for filter dropdowns)
 router.get('/filter-options', auth, async (req, res) => {
   try {
@@ -82,6 +84,48 @@ router.get('/filter-options', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching filter options:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all placed students with filters
+router.get('/placed', auth, async (req, res) => {
+  try {
+    const {
+      year,
+      department,
+      company,
+      minPackage,
+      maxPackage,
+      sortBy = 'package',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const query = { 
+      placementStatus: 'Placed',
+      companyName: { $exists: true, $ne: null }
+    };
+
+    if (year) query.currentYear = parseInt(year);
+    if (department) query.departmentCode = department.toUpperCase();
+    if (company) query.companyName = { $regex: company, $options: 'i' };
+    
+    if (minPackage || maxPackage) {
+      query.package = {};
+      if (minPackage) query.package.$gte = parseFloat(minPackage);
+      if (maxPackage) query.package.$lte = parseFloat(maxPackage);
+    }
+
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const students = await Student.find(query)
+      .populate('department', 'name code')
+      .sort(sortOptions);
+
+    res.json(students);
+  } catch (error) {
+    console.error('Error fetching placed students:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

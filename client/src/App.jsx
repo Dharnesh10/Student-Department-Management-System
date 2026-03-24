@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import DepartmentView from './pages/DepartmentView';
 import StudentDetail from './pages/StudentDetail';
 import SmartFilter from './pages/SmartFilter';
+import PlacedStudents from './pages/PlacedStudents';
 
 const PrivateRoute = ({ children }) => {
   const { admin, loading } = useAuth();
@@ -68,6 +69,16 @@ const AppRoutes = () => {
           <PrivateRoute>
             <Layout>
               <StudentDetail />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/placed-students"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <PlacedStudents />
             </Layout>
           </PrivateRoute>
         }

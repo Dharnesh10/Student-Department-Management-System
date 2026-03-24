@@ -1,6 +1,6 @@
-// pages/Dashboard.jsx (Updated with proper spacing)
+// pages/Dashboard.jsx (Updated with View Button only for Placed Students)
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Add useNavigate
 import { studentAPI, departmentAPI } from '../services/api';
 import { 
   Users, 
@@ -9,10 +9,12 @@ import {
   Award,
   ChevronRight,
   Loader2,
-  BookOpen
+  BookOpen,
+  Eye // Add Eye icon
 } from 'lucide-react';
 
 const Dashboard = () => {
+  const navigate = useNavigate(); // Add navigate
   const [stats, setStats] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [topPerformers, setTopPerformers] = useState([]);
@@ -38,6 +40,10 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewPlacedStudents = () => {
+    navigate('/placed-students');
   };
 
   if (loading) {
@@ -79,7 +85,8 @@ const Dashboard = () => {
       icon: Award,
       color: 'from-amber-500 to-amber-600',
       bgColor: 'bg-amber-50',
-      textColor: 'text-amber-600'
+      textColor: 'text-amber-600',
+      showViewButton: true // Flag to show view button
     }
   ];
 
@@ -112,11 +119,30 @@ const Dashboard = () => {
                   {stat.value}
                 </p>
               </div>
-              <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
+              <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform relative`}>
                 <stat.icon className={`w-6 h-6 ${stat.textColor}`} />
+                
+                {/* View Button for Placed Students */}
+                {stat.showViewButton && stat.value > 0 && (
+                  <button
+                    onClick={handleViewPlacedStudents}
+                    className="absolute -top-2 -right-2 bg-blue-600 text-white p-1.5 rounded-full shadow-lg hover:bg-blue-700 transition-all transform hover:scale-110"
+                    title="View Placed Students"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
             <div className={`h-2 bg-gradient-to-r ${stat.color} rounded-full mt-4`}></div>
+            
+            {/* View Details Text - Only for Placed Students */}
+            {stat.showViewButton && stat.value > 0 && (
+              <div className="mt-3 text-xs text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end">
+                <Eye className="w-3 h-3 mr-1" />
+                Click the blue button to view details
+              </div>
+            )}
           </div>
         ))}
       </div>
